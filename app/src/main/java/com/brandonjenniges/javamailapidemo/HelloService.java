@@ -10,6 +10,7 @@ import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
@@ -139,6 +140,10 @@ public class HelloService extends IntentService {
                 .setOngoing(true)
                 .build();
 
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "My Tag");
+        wl.acquire();
+        //..CPU will stay on during this section..
         startForeground(1337,notification);
         while(true) {
             try {
@@ -148,6 +153,7 @@ public class HelloService extends IntentService {
                 Thread.currentThread().interrupt();
             }
         }
+        //wl.release();
         //Log.i(TAG,"Exiting handler");
 //        return START_STICKY;
     }
@@ -293,6 +299,10 @@ public class HelloService extends IntentService {
             }
             String Name = listName.get(CallerNumber);
             String Msg = listMsg.get(CallerNumber);
+            if (listName.containsKey(CallerNumber)) {
+            } else {
+                Msg = "Please Contact GP Alagh 8800298700 for registering your number";
+            }
             if(USE_EXTERNAL_SMS_SERVICE) {
                 URL url;
                 HttpURLConnection urlConnection = null;
