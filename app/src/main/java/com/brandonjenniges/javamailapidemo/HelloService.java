@@ -34,6 +34,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.lang.reflect.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Iterator;
 import android.content.Context;
@@ -65,6 +67,7 @@ public class HelloService extends IntentService {
     private TelephonyManager telephonyManager;
     private Thread backgroundThread;
     private static final int PERMISSION_REQUEST_CODE = 1;
+    private static final boolean USE_EXTERNAL_SMS_SERVICE = true;
     private Runnable myTask = new Runnable() {
         public void run() {
             sendMessage();
@@ -143,7 +146,7 @@ public class HelloService extends IntentService {
                 Thread.currentThread().interrupt();
             }
         }
-        Log.i(TAG,"Exiting handler");
+        //Log.i(TAG,"Exiting handler");
 //        return START_STICKY;
     }
 
@@ -280,23 +283,45 @@ public class HelloService extends IntentService {
             HashMap<String, String> listMsg = new HashMap<>();
             HashMap<String, String> listNewID = new HashMap<>();
             while ((nextLine = reader.readNext()) != null) {
-                listName.put(nextLine[0],nextLine[1]);
-                listNewID.put(nextLine[0],nextLine[2]);
-                listMsg.put(nextLine[0],nextLine[3]);
+                listName.put(nextLine[3],nextLine[8]);
+                listNewID.put(nextLine[3],nextLine[4]);
+                listMsg.put(nextLine[3],nextLine[21]);
                 // nextLine[] is an array of values from the line
-                Log.i(TAGCSV,nextLine[0] + " , " + nextLine[1] + " , " + nextLine[2]);
+                Log.i(TAGCSV,nextLine[3] + " , " + nextLine[1] + " , " + nextLine[2] + "," + nextLine[21]);
             }
             String Name = listName.get(CallerNumber);
             String Msg = listMsg.get(CallerNumber);
-            SmsManager smsManager = SmsManager.getDefault();
-            if (listName.containsKey(CallerNumber)) {
-                Log.i(TAGSMS,"Sending SMS Sent to " + CallerNumber);
-                smsManager.sendTextMessage(CallerNumber, null, Msg, null, null);
-                System.out.println("Detailed SMS Sent to " + CallerNumber);
+            if(USE_EXTERNAL_SMS_SERVICE) {
+                URL url;
+                HttpURLConnection urlConnection = null;
+                try {
+                    url = new URL("http://enterprise.easyserve.me/http-api.php?username=vajoff&password=vajoff@123&senderid=BAJOFF&route=1&number=" + CallerNumber + "&message=" + Msg);
+                    urlConnection = (HttpURLConnection) url
+                            .openConnection();
+                }
+                catch(Exception e) {
+                    SmsManager smsManager = SmsManager.getDefault();
+                    if (listName.containsKey(CallerNumber)) {
+                        Log.i(TAGSMS, "Backup Sending SMS Sent to " + CallerNumber);
+                        smsManager.sendTextMessage(CallerNumber, null, Msg, null, null);
+                        System.out.println("Detailed SMS Sent to " + CallerNumber);
+                    } else {
+                        Log.i(TAGSMS, "Backup Sending GP Alagh SMS Sent to " + CallerNumber);
+                        smsManager.sendTextMessage(CallerNumber, null, "Please contact GP Alagh in Badge Office", null, null);
+                        Log.i(TAGSMS, "GP Alagh SMS Sent to " + CallerNumber);
+                    }
+                }
             } else {
-                Log.i(TAGSMS,"Sending GP Alagh SMS Sent to " + CallerNumber);
-                smsManager.sendTextMessage(CallerNumber, null, "Please contact GP Alagh in Badge Office", null, null);
-                Log.i(TAGSMS,"GP Alagh SMS Sent to " + CallerNumber);
+                SmsManager smsManager = SmsManager.getDefault();
+                if (listName.containsKey(CallerNumber)) {
+                    Log.i(TAGSMS, "Sending SMS Sent to " + CallerNumber);
+                    smsManager.sendTextMessage(CallerNumber, null, Msg, null, null);
+                    System.out.println("Detailed SMS Sent to " + CallerNumber);
+                } else {
+                    Log.i(TAGSMS, "Sending GP Alagh SMS Sent to " + CallerNumber);
+                    smsManager.sendTextMessage(CallerNumber, null, "Please contact GP Alagh in Badge Office", null, null);
+                    Log.i(TAGSMS, "GP Alagh SMS Sent to " + CallerNumber);
+                }
             }
         }
         catch(Exception e) {
