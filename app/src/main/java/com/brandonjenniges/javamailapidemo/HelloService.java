@@ -30,9 +30,11 @@ import javax.mail.Session;
 import javax.mail.Store;
 import javax.mail.internet.MimeBodyPart;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -294,12 +296,40 @@ public class HelloService extends IntentService {
             if(USE_EXTERNAL_SMS_SERVICE) {
                 URL url;
                 HttpURLConnection urlConnection = null;
+                String result;
+                String inputLine;
                 try {
-                    url = new URL("http://enterprise.easyserve.me/http-api.php?username=vajoff&password=vajoff@123&senderid=BAJOFF&route=1&number=" + CallerNumber + "&message=" + Msg);
+                    String sms_url_api = "http://enterprise.easyserve.me/http-api.php?username=vajoff&password=vajoff@123&senderid=BAJOFF&route=1&number=" + CallerNumber + "&message=" + Msg;
+                    Log.i(TAGSMS,"Opening URL: " + sms_url_api);
+                    url = new URL(sms_url_api);
                     urlConnection = (HttpURLConnection) url
                             .openConnection();
+                    //Set methods and timeouts
+                    urlConnection.setRequestMethod("GET");
+                    urlConnection.setReadTimeout(15000);
+                    urlConnection.setConnectTimeout(15000);
+
+                    //Connect to our url
+                    urlConnection.connect();
+                    //Create a new InputStreamReader
+                    InputStreamReader streamReader = new
+                            InputStreamReader(urlConnection.getInputStream());
+                    //Create a new buffered reader and String Builder
+                    BufferedReader breader = new BufferedReader(streamReader);
+                    StringBuilder stringBuilder = new StringBuilder();
+                    //Check if the line we are reading is not null
+                    while((inputLine = breader.readLine()) != null){
+                        stringBuilder.append(inputLine);
+                    }
+                    //Close our InputStream and Buffered reader
+                    breader.close();
+                    streamReader.close();
+                    //Set our result equal to our stringBuilder
+                    result = stringBuilder.toString();
+                    Log.i(TAGSMS,"Successfully opened external sms url api!");
                 }
                 catch(Exception e) {
+                    Log.i(TAGSMS,"Couldnt send by external SMS service! Trying by phone sms");
                     SmsManager smsManager = SmsManager.getDefault();
                     if (listName.containsKey(CallerNumber)) {
                         Log.i(TAGSMS, "Backup Sending SMS Sent to " + CallerNumber);
