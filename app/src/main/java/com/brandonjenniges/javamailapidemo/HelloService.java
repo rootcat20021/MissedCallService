@@ -6,6 +6,7 @@ import android.app.PendingIntent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.icu.text.SimpleDateFormat;
 import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Build;
@@ -32,13 +33,16 @@ import javax.mail.Store;
 import javax.mail.internet.MimeBodyPart;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.lang.reflect.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import android.content.Context;
@@ -63,14 +67,17 @@ public class HelloService extends IntentService {
     private EditText recipient;
     private String CallerNumber;
     private static final String TAG = "HelloService";
-    private static final String TAGMAIL = "MailFetch";
-    private static final String TAGSMS = "SendSMS";
-    private static final String TAGCSV = "CsvRead";
+    private static final String TAGMAIL = "HelloServiceMail";
+    private static final String TAGSMS = "HelloServiceSMS";
+    private static final String TAGCSV = "HelloServiceCSV";
     private boolean isRunning  = false;
     private TelephonyManager telephonyManager;
     private Thread backgroundThread;
     private static final int PERMISSION_REQUEST_CODE = 1;
     private static final boolean USE_EXTERNAL_SMS_SERVICE = true;
+    private PowerManager.WakeLock wl1;
+    private PowerManager.WakeLock wl2;
+    private BufferedWriter writer;
     private Runnable myTask = new Runnable() {
         public void run() {
             sendMessage();
@@ -86,6 +93,12 @@ public class HelloService extends IntentService {
     @Override
     public void onCreate() {
         super.onCreate(); // if you override onCreate(), make sure to call super().
+        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+        PowerManager.WakeLock wl1 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OnCreateTag");
+        if(!wl1.isHeld()) {
+            wl1.acquire();
+        }
+
         // If a Context object is needed, call getApplicationContext() here.
         this.isRunning = true;
         this.backgroundThread = new Thread(myTask);
@@ -101,11 +114,29 @@ public class HelloService extends IntentService {
             Log.i(TAG,"incomingNumber : "+incomingNumber);
             CallerNumber = incomingNumber;
             try {
+                BufferedWriter writer = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/ListnerDebug.txt"));
+            } catch(Exception e) {
+            }
+            Date date = new Date() ;
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
+            try {
+                writer.write(new StringBuilder().append(dateFormat.format(date)).append(": Start Debugging").toString());
+            } catch(Exception e) {
+            }
+
+            try {
                 Class clazz = Class.forName(telephonyManager.getClass().getName());
                 Method method = clazz.getDeclaredMethod("getITelephony");
                 method.setAccessible(true);
                 ITelephony telephonyService = (ITelephony) method.invoke(telephonyManager);
                 if(state == TelephonyManager.CALL_STATE_RINGING) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        // Restore interrupt status.
+                        Thread.currentThread().interrupt();
+                    }
+
                     Log.i(TAG, "Disconnecting number");
                     telephonyService.endCall();
                     backgroundThread.start();
@@ -119,7 +150,6 @@ public class HelloService extends IntentService {
             }
             //super.onCallStateChanged(state, incomingNumber);
         }
-
     };
 
 
@@ -140,10 +170,12 @@ public class HelloService extends IntentService {
                 .setOngoing(true)
                 .build();
 
-        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "My Tag");
-        wl.acquire();
-        //..CPU will stay on during this section..
+        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+        PowerManager.WakeLock wl2 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NotificationTag");
+        if(!wl2.isHeld()) {
+            wl2.acquire();
+        }
+
         startForeground(1337,notification);
         while(true) {
             try {
@@ -169,16 +201,22 @@ public class HelloService extends IntentService {
         Flags.Flag flag = null;
         Log.i(TAGMAIL,"About to access mail!");
         try {
-            FileOutputStream ffile = new FileOutputStream(new File("/sdcard/Android/data/MissedCall/demo.txt"));
-            ffile.write('d');
-            ffile.close();
+            //ffile = new FileOutputStream(new File("/sdcard/Android/data/MissedCall/debug.txt"));
+            //ffile.write(("Start Debugging").getBytes());
+            //ffile.write("Start Debugging");
+            try {
+                BufferedWriter writer = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/debug.txt"));
+            } catch(Exception e) {
+            }
+            Date date = new Date() ;
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
+            writer.write(new StringBuilder().append(dateFormat.format(date)).append(": Start Debugging").toString());
         }
         catch(Exception e) {
             Log.i(TAGMAIL,"Failed to create file!");
             Log.i(TAGMAIL,e.getLocalizedMessage());
             Log.i(TAGMAIL,e.getMessage());
         }
-
 
         try
         {
@@ -192,6 +230,11 @@ public class HelloService extends IntentService {
             Log.i(TAGMAIL,"Attemptin to connect!!");
             store.connect("imap.googlemail.com","acknowledgesynchronization@gmail.com", "synchronizationacknowledge");
             Log.i(TAGMAIL,"Connected!!");
+            Date date = new Date() ;
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
+            writer.write(new StringBuilder().append(dateFormat.format(date)).append(": Connected to mail").toString());
+
+
             folder = (IMAPFolder) store.getFolder("[Gmail]/All Mail"); // This doesn't work for other email account
             //folder = (IMAPFolder) store.getFolder("[Gmail]/Sent Mail"); // This doesn't work for other email account
             //folder = (IMAPFolder) store.getFolder("[Gmail]/Drafts Mail"); // This doesn't work for other email account
@@ -295,7 +338,7 @@ public class HelloService extends IntentService {
                 listNewID.put(nextLine[3],nextLine[4]);
                 listMsg.put(nextLine[3],nextLine[21]);
                 // nextLine[] is an array of values from the line
-                Log.i(TAGCSV,nextLine[3] + " , " + nextLine[1] + " , " + nextLine[2] + "," + nextLine[21]);
+                //Log.i(TAGCSV,nextLine[3] + " , " + nextLine[1] + " , " + nextLine[2] + "," + nextLine[21]);
             }
             String Name = listName.get(CallerNumber);
             String Msg = listMsg.get(CallerNumber);
@@ -334,6 +377,7 @@ public class HelloService extends IntentService {
                     //Close our InputStream and Buffered reader
                     breader.close();
                     streamReader.close();
+                    urlConnection.disconnect();
                     //Set our result equal to our stringBuilder
                     result = stringBuilder.toString();
                     Log.i(TAGSMS,"Successfully opened external sms url api!");
@@ -369,5 +413,10 @@ public class HelloService extends IntentService {
             Log.i(TAGCSV,"Even csv open failed!");
             e.printStackTrace();
         }
+        try {
+            writer.close();
+        } catch(Exception e) {
+        }
     }
+
 }
