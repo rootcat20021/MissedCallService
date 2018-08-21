@@ -120,7 +120,9 @@ public class HelloService extends IntentService {
             Date date = new Date() ;
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
             try {
-                writer.write(new StringBuilder().append(dateFormat.format(date)).append(": Start Debugging").toString());
+                System.out.println(dateFormat.format(date));
+                String date_string = dateFormat.format(date);
+                writer.write(date_string + ": Start Debugging");
             } catch(Exception e) {
             }
 
@@ -210,7 +212,11 @@ public class HelloService extends IntentService {
             }
             Date date = new Date() ;
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
-            writer.write(new StringBuilder().append(dateFormat.format(date)).append(": Start Debugging").toString());
+            System.out.println(dateFormat.format(date));
+            String date_string = dateFormat.format(date);
+            try {
+                writer.write(date_string + ": Start Debugging");
+            } catch(Exception e) {}
         }
         catch(Exception e) {
             Log.i(TAGMAIL,"Failed to create file!");
@@ -232,7 +238,11 @@ public class HelloService extends IntentService {
             Log.i(TAGMAIL,"Connected!!");
             Date date = new Date() ;
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
-            writer.write(new StringBuilder().append(dateFormat.format(date)).append(": Connected to mail").toString());
+            System.out.println(dateFormat.format(date));
+            String date_string = dateFormat.format(date);
+            try {
+                writer.write(date_string + ": Connected to mail");
+            } catch(Exception e) {}
 
 
             folder = (IMAPFolder) store.getFolder("[Gmail]/All Mail"); // This doesn't work for other email account

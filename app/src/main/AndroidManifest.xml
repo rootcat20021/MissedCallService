@@ -33,7 +33,6 @@
 
         <!--Service declared in manifest -->
         <service android:name=".HelloService"
-            android:process=":remote"
             android:exported="true"/>
     </application>
 
