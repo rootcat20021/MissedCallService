@@ -39,9 +39,12 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
+import java.io.Writer;
 import java.lang.reflect.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+
+import java.sql.Timestamp;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -77,7 +80,9 @@ public class HelloService extends IntentService {
     private static final boolean USE_EXTERNAL_SMS_SERVICE = true;
     private PowerManager.WakeLock wl1;
     private PowerManager.WakeLock wl2;
-    private BufferedWriter writer;
+    //private BufferedWriter writer;
+    private Writer writer1;
+    private Writer writer2;
     private Runnable myTask = new Runnable() {
         public void run() {
             sendMessage();
@@ -95,7 +100,7 @@ public class HelloService extends IntentService {
         super.onCreate(); // if you override onCreate(), make sure to call super().
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         PowerManager.WakeLock wl1 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OnCreateTag");
-        if(!wl1.isHeld()) {
+        if((wl1 != null) && (wl1.isHeld()==false)) {
             wl1.acquire();
         }
 
@@ -114,16 +119,23 @@ public class HelloService extends IntentService {
             Log.i(TAG,"incomingNumber : "+incomingNumber);
             CallerNumber = incomingNumber;
             try {
-                BufferedWriter writer = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/ListnerDebug.txt"));
+                //BufferedWriter writer = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/ListnerDebug.txt"));
+                Writer writer1 = new FileWriter("/sdcard/Android/data/MissedCall/ListnerDebug.txt",false);
             } catch(Exception e) {
+                System.out.println(e.getMessage());
+                System.out.println("ListnerDebug.txt file couldnt be open");
             }
-            Date date = new Date() ;
+            java.util.Date date = new java.util.Date();
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
             try {
                 System.out.println(dateFormat.format(date));
-                String date_string = dateFormat.format(date);
-                writer.write(date_string + ": Start Debugging");
+                String message = "Start Debugging";
+
+                writer1.write(new Timestamp(date.getTime()) + "\n");
+                writer1.write(message + "\n");
             } catch(Exception e) {
+                System.out.println(dateFormat.format(date));
+                e.printStackTrace();
             }
 
             try {
@@ -150,6 +162,9 @@ public class HelloService extends IntentService {
                 Log.i(TAG,"Unable to disconnect call");
                 //Log.i(TAG,e.getLocalizedMessage());
             }
+            try {
+                writer1.close();
+            } catch(Exception e) {}
             //super.onCallStateChanged(state, incomingNumber);
         }
     };
@@ -160,6 +175,7 @@ public class HelloService extends IntentService {
 
     @Override
     protected void onHandleIntent(Intent intent) {
+        //super.onHandleIntent();
         // Normally we would do some work here, like download a file.
         // For our sample, we just sleep for 5 seconds.
         Intent previousIntent = new Intent(this, HelloService.class);
@@ -174,7 +190,7 @@ public class HelloService extends IntentService {
 
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         PowerManager.WakeLock wl2 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NotificationTag");
-        if(!wl2.isHeld()) {
+        if((wl2 != null) && (wl2.isHeld()==false)) {
             wl2.acquire();
         }
 
@@ -207,16 +223,25 @@ public class HelloService extends IntentService {
             //ffile.write(("Start Debugging").getBytes());
             //ffile.write("Start Debugging");
             try {
-                BufferedWriter writer = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/debug.txt"));
+                //BufferedWriter writer = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/debug.txt"));
+                Writer writer2 = new FileWriter("/sdcard/Android/data/MissedCall/SendMessageDebug.txt",false);
             } catch(Exception e) {
+                System.out.println(e.getMessage());
+                System.out.println("SendMessageDebug.txt file couldnt be open");
             }
             Date date = new Date() ;
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
             System.out.println(dateFormat.format(date));
             String date_string = dateFormat.format(date);
             try {
-                writer.write(date_string + ": Start Debugging");
-            } catch(Exception e) {}
+                String message = "In send message";
+                date = new java.util.Date();
+                writer2.write(new Timestamp(date.getTime()) + "\n");
+                writer2.write(message + "\n");
+            } catch(Exception e) {
+                System.out.println(dateFormat.format(date));
+                e.printStackTrace();
+            }
         }
         catch(Exception e) {
             Log.i(TAGMAIL,"Failed to create file!");
@@ -241,8 +266,15 @@ public class HelloService extends IntentService {
             System.out.println(dateFormat.format(date));
             String date_string = dateFormat.format(date);
             try {
-                writer.write(date_string + ": Connected to mail");
-            } catch(Exception e) {}
+                String message = "Connected mail";
+                date = new java.util.Date();
+                writer2.write(new Timestamp(date.getTime()) + "\n");
+                writer2.write(message + "\n");
+
+            } catch(Exception e) {
+                System.out.println(dateFormat.format(date));
+                e.printStackTrace();
+            }
 
 
             folder = (IMAPFolder) store.getFolder("[Gmail]/All Mail"); // This doesn't work for other email account
@@ -424,9 +456,16 @@ public class HelloService extends IntentService {
             e.printStackTrace();
         }
         try {
-            writer.close();
+            writer2.close();
         } catch(Exception e) {
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (wl1.isHeld()) wl1.release();
+        if (wl2.isHeld()) wl2.release();
     }
 
 }
