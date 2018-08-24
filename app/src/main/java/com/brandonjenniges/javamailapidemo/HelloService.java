@@ -80,9 +80,9 @@ public class HelloService extends IntentService {
     private static final boolean USE_EXTERNAL_SMS_SERVICE = true;
     private PowerManager.WakeLock wl1;
     private PowerManager.WakeLock wl2;
-    //private BufferedWriter writer;
-    private Writer writer1;
-    private Writer writer2;
+    private BufferedWriter writer1;
+    private BufferedWriter writer2;
+
     private Runnable myTask = new Runnable() {
         public void run() {
             sendMessage();
@@ -100,6 +100,7 @@ public class HelloService extends IntentService {
         super.onCreate(); // if you override onCreate(), make sure to call super().
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         PowerManager.WakeLock wl1 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OnCreateTag");
+        wl1.setReferenceCounted(false);
         if((wl1 != null) && (wl1.isHeld()==false)) {
             wl1.acquire();
         }
@@ -119,8 +120,8 @@ public class HelloService extends IntentService {
             Log.i(TAG,"incomingNumber : "+incomingNumber);
             CallerNumber = incomingNumber;
             try {
-                //BufferedWriter writer = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/ListnerDebug.txt"));
-                Writer writer1 = new FileWriter("/sdcard/Android/data/MissedCall/ListnerDebug.txt",false);
+                writer1 = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/ListnerDebug.txt"));
+                Log.i(TAG,"opened Listner debug.txt");
             } catch(Exception e) {
                 System.out.println(e.getMessage());
                 System.out.println("ListnerDebug.txt file couldnt be open");
@@ -190,6 +191,7 @@ public class HelloService extends IntentService {
 
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         PowerManager.WakeLock wl2 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NotificationTag");
+        wl2.setReferenceCounted(false);
         if((wl2 != null) && (wl2.isHeld()==false)) {
             wl2.acquire();
         }
@@ -223,8 +225,8 @@ public class HelloService extends IntentService {
             //ffile.write(("Start Debugging").getBytes());
             //ffile.write("Start Debugging");
             try {
-                //BufferedWriter writer = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/debug.txt"));
-                Writer writer2 = new FileWriter("/sdcard/Android/data/MissedCall/SendMessageDebug.txt",false);
+                writer2 = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/debug.txt"));
+                Log.i(TAG,"opened SendMessage debug.txt");
             } catch(Exception e) {
                 System.out.println(e.getMessage());
                 System.out.println("SendMessageDebug.txt file couldnt be open");
