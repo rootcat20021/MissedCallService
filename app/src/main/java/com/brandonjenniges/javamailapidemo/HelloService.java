@@ -82,6 +82,8 @@ public class HelloService extends IntentService {
     private PowerManager.WakeLock wl2;
     private BufferedWriter writer1;
     private BufferedWriter writer2;
+    private BufferedWriter writer_sms_record;
+    private Date date;
 
     private Runnable myTask = new Runnable() {
         public void run() {
@@ -99,7 +101,7 @@ public class HelloService extends IntentService {
     public void onCreate() {
         super.onCreate(); // if you override onCreate(), make sure to call super().
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-        PowerManager.WakeLock wl1 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OnCreateTag");
+        wl1 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OnCreateTag");
         wl1.setReferenceCounted(false);
         if((wl1 != null) && (wl1.isHeld()==false)) {
             wl1.acquire();
@@ -120,7 +122,7 @@ public class HelloService extends IntentService {
             Log.i(TAG,"incomingNumber : "+incomingNumber);
             CallerNumber = incomingNumber;
             try {
-                writer1 = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/ListnerDebug.txt"));
+                writer1 = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/ListnerDebug.txt",true));
                 Log.i(TAG,"opened Listner debug.txt");
             } catch(Exception e) {
                 System.out.println(e.getMessage());
@@ -190,7 +192,7 @@ public class HelloService extends IntentService {
                 .build();
 
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-        PowerManager.WakeLock wl2 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NotificationTag");
+        wl2 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NotificationTag");
         wl2.setReferenceCounted(false);
         if((wl2 != null) && (wl2.isHeld()==false)) {
             wl2.acquire();
@@ -225,23 +227,24 @@ public class HelloService extends IntentService {
             //ffile.write(("Start Debugging").getBytes());
             //ffile.write("Start Debugging");
             try {
-                writer2 = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/debug.txt"));
+                writer2 = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/debug.txt",true));
+                writer_sms_record = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/SMSRecord.csv",true));
+                writer_sms_record.write("Time,Phone No.,ID,Name,Message,Mechanism\n");
                 Log.i(TAG,"opened SendMessage debug.txt");
             } catch(Exception e) {
                 System.out.println(e.getMessage());
                 System.out.println("SendMessageDebug.txt file couldnt be open");
             }
-            Date date = new Date() ;
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
-            System.out.println(dateFormat.format(date));
-            String date_string = dateFormat.format(date);
+
+            //SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
+            //System.out.println(dateFormat.format(date));
+            //String date_string = dateFormat.format(date);
             try {
                 String message = "In send message";
                 date = new java.util.Date();
                 writer2.write(new Timestamp(date.getTime()) + "\n");
                 writer2.write(message + "\n");
             } catch(Exception e) {
-                System.out.println(dateFormat.format(date));
                 e.printStackTrace();
             }
         }
@@ -386,6 +389,7 @@ public class HelloService extends IntentService {
             }
             String Name = listName.get(CallerNumber);
             String Msg = listMsg.get(CallerNumber);
+            String NewID = listNewID.get(CallerNumber);
             if (listName.containsKey(CallerNumber)) {
             } else {
                 Msg = "Please Contact GP Alagh 8800298700 for registering your number";
@@ -393,7 +397,6 @@ public class HelloService extends IntentService {
             if(USE_EXTERNAL_SMS_SERVICE) {
                 URL url;
                 HttpURLConnection urlConnection = null;
-                String result;
                 String inputLine;
                 try {
                     String sms_url_api = "http://enterprise.easyserve.me/http-api.php?username=vajoff&password=vajoff@123&senderid=BAJOFF&route=1&number=" + CallerNumber + "&message=" + Msg;
@@ -422,8 +425,7 @@ public class HelloService extends IntentService {
                     breader.close();
                     streamReader.close();
                     urlConnection.disconnect();
-                    //Set our result equal to our stringBuilder
-                    result = stringBuilder.toString();
+                    writer_sms_record.write(new Timestamp(date.getTime()) + "," + CallerNumber + "," + NewID + "," + Name + "," + Msg + "," + "EXTERNAL SMS SERVICE\n");
                     Log.i(TAGSMS,"Successfully opened external sms url api!");
                 }
                 catch(Exception e) {
@@ -438,6 +440,7 @@ public class HelloService extends IntentService {
                         smsManager.sendTextMessage(CallerNumber, null, "Please contact GP Alagh in Badge Office", null, null);
                         Log.i(TAGSMS, "GP Alagh SMS Sent to " + CallerNumber);
                     }
+                    writer_sms_record.write(new Timestamp(date.getTime()) + "," + CallerNumber + "," + NewID + "," + Name + "," + Msg + "," + "LOCAL PHONE SMS SERVICE\n");
                 }
             } else {
                 SmsManager smsManager = SmsManager.getDefault();
@@ -450,6 +453,8 @@ public class HelloService extends IntentService {
                     smsManager.sendTextMessage(CallerNumber, null, "Please contact GP Alagh in Badge Office", null, null);
                     Log.i(TAGSMS, "GP Alagh SMS Sent to " + CallerNumber);
                 }
+                date = new java.util.Date();
+                writer_sms_record.write(new Timestamp(date.getTime()) + "," + CallerNumber + "," + NewID + "," + Name + "," + Msg + "," + "LOCAL PHONE SMS SERVICE\n");
             }
         }
         catch(Exception e) {
@@ -459,6 +464,7 @@ public class HelloService extends IntentService {
         }
         try {
             writer2.close();
+            writer_sms_record.close();
         } catch(Exception e) {
         }
     }

@@ -27,7 +27,7 @@ public class MainActivity extends Activity {
         System.out.println("Created Service!");
         // Start the service
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-        PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BeforeServiceTag");
+        wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BeforeServiceTag");
         wl.setReferenceCounted(false);
         if((wl != null) && (wl.isHeld()==false)) {
             wl.acquire();
