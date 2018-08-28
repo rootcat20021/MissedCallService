@@ -192,7 +192,7 @@ public class HelloService extends IntentService {
                 .build();
 
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-        wl2 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NotificationTag");
+        wl2 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LocationManagerService");
         wl2.setReferenceCounted(false);
         if((wl2 != null) && (wl2.isHeld()==false)) {
             wl2.acquire();
