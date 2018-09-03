@@ -123,6 +123,7 @@ public class HelloService extends IntentService {
             CallerNumber = incomingNumber;
             try {
                 writer1 = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/ListnerDebug.txt",true));
+                writer1.write("Phone listner got hit!\n");
                 Log.i(TAG,"opened Listner debug.txt");
             } catch(Exception e) {
                 System.out.println(e.getMessage());
@@ -155,7 +156,11 @@ public class HelloService extends IntentService {
                     }
 
                     Log.i(TAG, "Disconnecting number");
+                    writer1.write(new Timestamp(date.getTime()) + "\n");
+                    writer1.write("Disconnecting Number\n");
                     telephonyService.endCall();
+                    writer1.write(new Timestamp(date.getTime()) + "\n");
+                    writer1.write("Starting Background Thread\n");
                     backgroundThread.start();
                     //this.backgroundThread.start();
                     //sendMessage();
@@ -163,8 +168,16 @@ public class HelloService extends IntentService {
             }
             catch(Exception e) {
                 Log.i(TAG,"Unable to disconnect call");
-                //Log.i(TAG,e.getLocalizedMessage());
+                try {
+                    writer1.write(new Timestamp(date.getTime()) + "\n");
+                    writer1.write("Unable to disconnect\n");
+                    writer1.write(e.getLocalizedMessage());
+                    writer1.write(e.getMessage());
+                    //Log.i(TAG,e.getLocalizedMessage());
+                } catch(Exception ee) {
+                }
             }
+
             try {
                 writer1.close();
             } catch(Exception e) {}
