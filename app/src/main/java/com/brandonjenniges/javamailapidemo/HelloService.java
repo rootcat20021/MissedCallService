@@ -18,6 +18,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.content.WakefulBroadcastReceiver;
 import android.telephony.PhoneStateListener;
 import android.telephony.SmsManager;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.widget.EditText;
@@ -80,10 +81,9 @@ public class HelloService extends IntentService {
     private static final boolean USE_EXTERNAL_SMS_SERVICE = true;
     private PowerManager.WakeLock wl1;
     private PowerManager.WakeLock wl2;
-    private BufferedWriter writer1;
-    private BufferedWriter writer2;
+    private BufferedWriter WriterService;
     private BufferedWriter writer_sms_record;
-    private Date date;
+    private java.util.Date date;
 
     private Runnable myTask = new Runnable() {
         public void run() {
@@ -100,18 +100,71 @@ public class HelloService extends IntentService {
     @Override
     public void onCreate() {
         super.onCreate(); // if you override onCreate(), make sure to call super().
+        date = new java.util.Date();
+        try {
+            WriterService = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/Service.txt",true));
+            WriterService.write("\n---------------------------------\n");
+            WriterService.write(new Timestamp(date.getTime()) + "\n");
+            WriterService.write("Created new Service\nNow Acquiring lock - OnCreateTag\n");
+        } catch (Exception e) {}
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         wl1 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OnCreateTag");
         wl1.setReferenceCounted(false);
         if((wl1 != null) && (wl1.isHeld()==false)) {
             wl1.acquire();
+            try {
+                date = new java.util.Date();
+                WriterService.write(new Timestamp(date.getTime()) + "\n");
+                WriterService.write("Lock acquired\n");
+            } catch(Exception e) {}
         }
 
         // If a Context object is needed, call getApplicationContext() here.
         this.isRunning = true;
         this.backgroundThread = new Thread(myTask);
+
+
         telephonyManager = (TelephonyManager) getSystemService(getApplicationContext().TELEPHONY_SERVICE);
+        //Phone listner doesn't allow to set which sim id to get triggered from. So using reflection to modify that field
+        try {
+            Class classToInvestigate = Class.forName("android.telephony.PhoneStateListener");
+            WriterService.write("Investigating this class: " + classToInvestigate.getName() + "\n");
+            // Dynamically do stuff with this class
+            // List constructors, fields, methods, etc.
+            Field newmSubId = classToInvestigate.getDeclaredField("mSubId");
+            newmSubId.setAccessible(true);
+            SubscriptionManager subscriptionManager = (SubscriptionManager) getApplicationContext().getSystemService(getApplicationContext().TELEPHONY_SUBSCRIPTION_SERVICE);
+            int subscriptionIdOfSimCard1 = subscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(0).getSubscriptionId();
+            newmSubId.set(myListner,subscriptionIdOfSimCard1);
+            WriterService.write(new Timestamp(date.getTime()) + "\n");
+            WriterService.write("MyListner updated for subscription ID: " + subscriptionIdOfSimCard1 + "\n");
+
+        } catch (ClassNotFoundException e) {
+            // Class not found!
+            try {
+                WriterService.write(new Timestamp(date.getTime()) + "\n");
+                WriterService.write(e.getLocalizedMessage());
+            } catch(Exception ee) {}
+
+        } catch (Exception e) {
+            // Unknown exception
+            try {
+                WriterService.write(new Timestamp(date.getTime()) + "\n");
+                WriterService.write(e.getLocalizedMessage());
+            } catch(Exception ee) {}
+        }
+
         telephonyManager.listen(myListner,PhoneStateListener.LISTEN_CALL_STATE);
+        try {
+            date = new java.util.Date();
+            WriterService.write(new Timestamp(date.getTime()) + "\n");
+            WriterService.write("Created call listner\n");
+        } catch(Exception ee) {}
+
+        try {
+            WriterService.write("Exiting onCreate\n");
+            WriterService.close();
+        } catch(Exception e) {}
     }
 
     private PhoneStateListener myListner = new PhoneStateListener(){
@@ -120,27 +173,17 @@ public class HelloService extends IntentService {
             System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
             Log.i(TAG,"State: " + state);
             Log.i(TAG,"incomingNumber : "+incomingNumber);
-            CallerNumber = incomingNumber;
             try {
-                writer1 = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/ListnerDebug.txt",true));
-                writer1.write("Phone listner got hit!\n");
-                Log.i(TAG,"opened Listner debug.txt");
-            } catch(Exception e) {
-                System.out.println(e.getMessage());
-                System.out.println("ListnerDebug.txt file couldnt be open");
-            }
-            java.util.Date date = new java.util.Date();
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
-            try {
-                System.out.println(dateFormat.format(date));
-                String message = "Start Debugging";
+                WriterService = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/Service.txt",true));
+                WriterService.write("--------------------------------\n");
+                date = new java.util.Date();
+                WriterService.write(new Timestamp(date.getTime()) + "\n");
+                WriterService.write("Call state listner got hit\n");
+                WriterService.write("Stare = " + state + "\n");
+                WriterService.write("Incoming Number = " + incomingNumber + "\n");
+            } catch(Exception e) {}
 
-                writer1.write(new Timestamp(date.getTime()) + "\n");
-                writer1.write(message + "\n");
-            } catch(Exception e) {
-                System.out.println(dateFormat.format(date));
-                e.printStackTrace();
-            }
+            CallerNumber = incomingNumber;
 
             try {
                 Class clazz = Class.forName(telephonyManager.getClass().getName());
@@ -156,12 +199,26 @@ public class HelloService extends IntentService {
                     }
 
                     Log.i(TAG, "Disconnecting number");
-                    writer1.write(new Timestamp(date.getTime()) + "\n");
-                    writer1.write("Disconnecting Number\n");
+                    try {
+                        date = new java.util.Date();
+                        WriterService.write(new Timestamp(date.getTime()) + "\n");
+                        WriterService.write("Disconnecting number" + telephonyManager.getSimSerialNumber() + "\n");
+                    } catch(Exception e) {
+                    }
                     telephonyService.endCall();
-                    writer1.write(new Timestamp(date.getTime()) + "\n");
-                    writer1.write("Starting Background Thread\n");
+                    try {
+                        date = new java.util.Date();
+                        WriterService.write(new Timestamp(date.getTime()) + "\n");
+                        WriterService.write("Disconnected number.Now starting backgroundthread\n");
+                    } catch(Exception e) {
+                    }
                     backgroundThread.start();
+                    try {
+                        date = new java.util.Date();
+                        WriterService.write(new Timestamp(date.getTime()) + "\n");
+                        WriterService.write("Started Thread\n");
+                    } catch(Exception e) {
+                    }
                     //this.backgroundThread.start();
                     //sendMessage();
                 }
@@ -169,21 +226,22 @@ public class HelloService extends IntentService {
             catch(Exception e) {
                 Log.i(TAG,"Unable to disconnect call");
                 try {
-                    writer1.write(new Timestamp(date.getTime()) + "\n");
-                    writer1.write("Unable to disconnect\n");
-                    writer1.write(e.getLocalizedMessage());
-                    writer1.write(e.getMessage());
-                    //Log.i(TAG,e.getLocalizedMessage());
+                    date = new java.util.Date();
+                    WriterService.write(new Timestamp(date.getTime()) + "\n");
+                    WriterService.write(e.getLocalizedMessage());
+                    WriterService.write(e.getMessage());
                 } catch(Exception ee) {
                 }
             }
 
             try {
-                writer1.close();
+                WriterService.write("Exiting phonelistner!\n");
+                WriterService.close();
             } catch(Exception e) {}
             //super.onCallStateChanged(state, incomingNumber);
         }
     };
+
 
 
 //    public int onStartCommand(Intent intent, int flags, int startId) {
@@ -236,29 +294,17 @@ public class HelloService extends IntentService {
         Flags.Flag flag = null;
         Log.i(TAGMAIL,"About to access mail!");
         try {
-            //ffile = new FileOutputStream(new File("/sdcard/Android/data/MissedCall/debug.txt"));
-            //ffile.write(("Start Debugging").getBytes());
-            //ffile.write("Start Debugging");
             try {
-                writer2 = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/debug.txt",true));
+                WriterService = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/Service.txt",true));
                 writer_sms_record = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/SMSRecord.csv",true));
                 writer_sms_record.write("Time,Phone No.,ID,Name,Message,Mechanism\n");
+                date = new java.util.Date();
+                WriterService.write(new Timestamp(date.getTime()) + "\n");
+                WriterService.write("Inside SendMesage\n");
                 Log.i(TAG,"opened SendMessage debug.txt");
             } catch(Exception e) {
                 System.out.println(e.getMessage());
                 System.out.println("SendMessageDebug.txt file couldnt be open");
-            }
-
-            //SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
-            //System.out.println(dateFormat.format(date));
-            //String date_string = dateFormat.format(date);
-            try {
-                String message = "In send message";
-                date = new java.util.Date();
-                writer2.write(new Timestamp(date.getTime()) + "\n");
-                writer2.write(message + "\n");
-            } catch(Exception e) {
-                e.printStackTrace();
             }
         }
         catch(Exception e) {
@@ -280,18 +326,10 @@ public class HelloService extends IntentService {
             store.connect("imap.googlemail.com","acknowledgesynchronization@gmail.com", "synchronizationacknowledge");
             Log.i(TAGMAIL,"Connected!!");
             Date date = new Date() ;
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss") ;
-            System.out.println(dateFormat.format(date));
-            String date_string = dateFormat.format(date);
             try {
-                String message = "Connected mail";
-                date = new java.util.Date();
-                writer2.write(new Timestamp(date.getTime()) + "\n");
-                writer2.write(message + "\n");
-
-            } catch(Exception e) {
-                System.out.println(dateFormat.format(date));
-                e.printStackTrace();
+                WriterService.write(new Timestamp(date.getTime()) + "\n");
+                WriterService.write("Connected mail\n");
+            } catch(Exception ee) {
             }
 
 
@@ -314,6 +352,14 @@ public class HelloService extends IntentService {
                 Message msg = messages[i];
                 subject = msg.getSubject();
                 Log.i(TAGMAIL,"SUBJECT: " + subject);
+                try {
+                    date = new java.util.Date();
+                    WriterService.write(new Timestamp(date.getTime()) + "\n");
+                    WriterService.write("Message: " + (i + 1) + ":");
+                    WriterService.write("Subject: " + subject + "\n");
+                } catch(Exception e) {
+                }
+
                 if (subject.matches("SMSReport.*")) {
                     String contentType = msg.getContentType();
                     String messageContent = "";
@@ -372,6 +418,13 @@ public class HelloService extends IntentService {
             e.printStackTrace();
             System.out.println(e.getMessage());
             System.out.println("**************************************************");
+            try {
+                date = new java.util.Date();
+                WriterService.write(new Timestamp(date.getTime()) + "\n");
+                WriterService.write("Failed Mail Access\n");
+                WriterService.write("ERROR: " + e.getLocalizedMessage() + "\n");
+            } catch(Exception ee) {
+            }
 
         }
         finally
@@ -422,6 +475,12 @@ public class HelloService extends IntentService {
                     urlConnection.setReadTimeout(15000);
                     urlConnection.setConnectTimeout(15000);
 
+                    try {
+                        date = new java.util.Date();
+                        WriterService.write(new Timestamp(date.getTime()) + "\n");
+                        WriterService.write("Attempting to connect the external SMS service\n");
+                    } catch(Exception e) {
+                    }
                     //Connect to our url
                     urlConnection.connect();
                     //Create a new InputStreamReader
@@ -438,11 +497,25 @@ public class HelloService extends IntentService {
                     breader.close();
                     streamReader.close();
                     urlConnection.disconnect();
+                    date = new java.util.Date();
                     writer_sms_record.write(new Timestamp(date.getTime()) + "," + CallerNumber + "," + NewID + "," + Name + "," + Msg + "," + "EXTERNAL SMS SERVICE\n");
                     Log.i(TAGSMS,"Successfully opened external sms url api!");
+                    try {
+                        date = new java.util.Date();
+                        WriterService.write(new Timestamp(date.getTime()) + "\n");
+                        WriterService.write("Successfully external SMS service\n");
+                    } catch(Exception e) {
+                    }
                 }
                 catch(Exception e) {
                     Log.i(TAGSMS,"Couldnt send by external SMS service! Trying by phone sms");
+                    try {
+                        date = new java.util.Date();
+                        WriterService.write(new Timestamp(date.getTime()) + "\n");
+                        WriterService.write("Couldnt send by external SMS service\n");
+                        WriterService.write("ERROR: " + e.getLocalizedMessage() + "\n");
+                    } catch(Exception ee) {
+                    }
                     SmsManager smsManager = SmsManager.getDefault();
                     if (listName.containsKey(CallerNumber)) {
                         Log.i(TAGSMS, "Backup Sending SMS Sent to " + CallerNumber);
@@ -453,9 +526,22 @@ public class HelloService extends IntentService {
                         smsManager.sendTextMessage(CallerNumber, null, "Please contact GP Alagh in Badge Office", null, null);
                         Log.i(TAGSMS, "GP Alagh SMS Sent to " + CallerNumber);
                     }
+                    date = new java.util.Date();
                     writer_sms_record.write(new Timestamp(date.getTime()) + "," + CallerNumber + "," + NewID + "," + Name + "," + Msg + "," + "LOCAL PHONE SMS SERVICE\n");
+                    try {
+                        date = new java.util.Date();
+                        WriterService.write(new Timestamp(date.getTime()) + "\n");
+                        WriterService.write("Sent by phone SMS failsafe\n");
+                    } catch(Exception ee) {
+                    }
                 }
             } else {
+                try {
+                    date = new java.util.Date();
+                    WriterService.write(new Timestamp(date.getTime()) + "\n");
+                    WriterService.write("Sending by phone SMS\n");
+                } catch(Exception ee) {
+                }
                 SmsManager smsManager = SmsManager.getDefault();
                 if (listName.containsKey(CallerNumber)) {
                     Log.i(TAGSMS, "Sending SMS Sent to " + CallerNumber);
@@ -468,15 +554,27 @@ public class HelloService extends IntentService {
                 }
                 date = new java.util.Date();
                 writer_sms_record.write(new Timestamp(date.getTime()) + "," + CallerNumber + "," + NewID + "," + Name + "," + Msg + "," + "LOCAL PHONE SMS SERVICE\n");
+                try {
+                    WriterService.write(new Timestamp(date.getTime()) + "\n");
+                    WriterService.write("Sent by phone SMS\n");
+                } catch(Exception ee) {
+                }
             }
         }
         catch(Exception e) {
             Log.i(TAGCSV,"#############################");
             Log.i(TAGCSV,"Even csv open failed!");
             e.printStackTrace();
+            try {
+                date = new java.util.Date();
+                WriterService.write(new Timestamp(date.getTime()) + "\n");
+                WriterService.write("Even open CSV failed\n");
+                WriterService.write("ERROR: " + e.getLocalizedMessage() + "\n");
+            } catch(Exception ee) {
+            }
         }
         try {
-            writer2.close();
+            WriterService.close();
             writer_sms_record.close();
         } catch(Exception e) {
         }
@@ -485,8 +583,31 @@ public class HelloService extends IntentService {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (wl1.isHeld()) wl1.release();
-        if (wl2.isHeld()) wl2.release();
+        try {
+            date = new java.util.Date();
+            WriterService.write(new Timestamp(date.getTime()) + "\n");
+            WriterService.write("Service about to be destroyed\n");
+            WriterService.write("+++++++++++++++++++++++++++++++++\n");
+        } catch(Exception e) {}
+        if (wl1.isHeld()) {
+            wl1.release();
+        } else {
+            try {
+                WriterService.write("OnCreateTag Wakelock tag not held?\n");
+            } catch(Exception e) {}
+        }
+        if (wl2.isHeld()) {
+            wl2.release();
+        } else {
+            try {
+                WriterService.write("LocationManagerService Wakelog tag not held?\n");
+            } catch(Exception e) {}
+        }
+
+        try {
+            WriterService.write("Both wakelocks released\n");
+            WriterService.close();
+        } catch(Exception e) {}
     }
 
 }

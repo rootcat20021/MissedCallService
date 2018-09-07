@@ -45,6 +45,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        date = new java.util.Date();
         System.out.println("Created a MainActivity!");
         System.out.println("Launching service!");
         try {
@@ -72,6 +73,7 @@ public class MainActivity extends Activity {
     @Override
     public void onPause() {
         super.onPause();
+        date = new java.util.Date();
         try {
             WriterActivity.write(new Timestamp(date.getTime()) + "\n");
             WriterActivity.write("Activity about to be paused\n");
@@ -81,6 +83,7 @@ public class MainActivity extends Activity {
     @Override
     public void onResume() {
         super.onResume();
+        date = new java.util.Date();
         try {
             WriterActivity.write(new Timestamp(date.getTime()) + "\n");
             WriterActivity.write("Activity resumed\n");
@@ -90,6 +93,7 @@ public class MainActivity extends Activity {
     @Override
     public void onStop() {
         super.onStop();
+        date = new java.util.Date();
         try {
             WriterActivity.write(new Timestamp(date.getTime()) + "\n");
             WriterActivity.write("Activity stopped\n");
@@ -99,6 +103,7 @@ public class MainActivity extends Activity {
     @Override
     public void onRestart() {
         super.onRestart();
+        date = new java.util.Date();
         try {
             WriterActivity.write(new Timestamp(date.getTime()) + "\n");
             WriterActivity.write("Activity restarted\n");
@@ -108,11 +113,13 @@ public class MainActivity extends Activity {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        date = new java.util.Date();
         try {
             WriterActivity.write(new Timestamp(date.getTime()) + "\n");
             WriterActivity.write("Activity about to be destroyed. Going to release wakelock\n");
         } catch(Exception e) {}
         if (wl.isHeld()) wl.release();
+        date = new java.util.Date();
         try {
             WriterActivity.write(new Timestamp(date.getTime()) + "\n");
             WriterActivity.write("Wakelock released\n");
