@@ -2,7 +2,9 @@ package com.brandonjenniges.javamailapidemo;
 
 import android.Manifest;
 import android.app.Notification;
+//import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.R;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -14,6 +16,7 @@ import android.os.Bundle;
 import android.os.PowerManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.WakefulBroadcastReceiver;
 import android.telephony.PhoneStateListener;
@@ -44,6 +47,7 @@ import java.io.Writer;
 import java.lang.reflect.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.lang.String;
 
 import java.sql.Timestamp;
 import java.util.Date;
@@ -61,6 +65,8 @@ import java.util.concurrent.TimeUnit;
 import android.app.IntentService;
 import android.content.Intent;
 import android.os.IBinder;
+
+import static android.app.Notification.EXTRA_NOTIFICATION_ID;
 
 
 public class HelloService extends IntentService {
@@ -82,6 +88,7 @@ public class HelloService extends IntentService {
     private PowerManager.WakeLock wl1;
     private PowerManager.WakeLock wl2;
     private BufferedWriter WriterService;
+    private BufferedWriter WriterLife;
     private BufferedWriter writer_sms_record;
     private java.util.Date date;
 
@@ -136,12 +143,14 @@ public class HelloService extends IntentService {
             SubscriptionManager subscriptionManager = (SubscriptionManager) getApplicationContext().getSystemService(getApplicationContext().TELEPHONY_SUBSCRIPTION_SERVICE);
             int subscriptionIdOfSimCard1 = subscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(0).getSubscriptionId();
             newmSubId.set(myListner,subscriptionIdOfSimCard1);
+            date = new java.util.Date();
             WriterService.write(new Timestamp(date.getTime()) + "\n");
             WriterService.write("MyListner updated for subscription ID: " + subscriptionIdOfSimCard1 + "\n");
 
         } catch (ClassNotFoundException e) {
             // Class not found!
             try {
+                date = new java.util.Date();
                 WriterService.write(new Timestamp(date.getTime()) + "\n");
                 WriterService.write(e.getLocalizedMessage());
             } catch(Exception ee) {}
@@ -149,6 +158,7 @@ public class HelloService extends IntentService {
         } catch (Exception e) {
             // Unknown exception
             try {
+                date = new java.util.Date();
                 WriterService.write(new Timestamp(date.getTime()) + "\n");
                 WriterService.write(e.getLocalizedMessage());
             } catch(Exception ee) {}
@@ -183,7 +193,6 @@ public class HelloService extends IntentService {
                 WriterService.write("Incoming Number = " + incomingNumber + "\n");
             } catch(Exception e) {}
 
-            CallerNumber = incomingNumber;
 
             try {
                 Class clazz = Class.forName(telephonyManager.getClass().getName());
@@ -191,6 +200,7 @@ public class HelloService extends IntentService {
                 method.setAccessible(true);
                 ITelephony telephonyService = (ITelephony) method.invoke(telephonyManager);
                 if(state == TelephonyManager.CALL_STATE_RINGING) {
+                    CallerNumber = incomingNumber;
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
@@ -235,6 +245,8 @@ public class HelloService extends IntentService {
             }
 
             try {
+                date = new java.util.Date();
+                WriterService.write(new Timestamp(date.getTime()) + "\n");
                 WriterService.write("Exiting phonelistner!\n");
                 WriterService.close();
             } catch(Exception e) {}
@@ -255,12 +267,17 @@ public class HelloService extends IntentService {
         Intent previousIntent = new Intent(this, HelloService.class);
         PendingIntent ppreviousIntent = PendingIntent.getService(this, 0,
                 previousIntent, 0);
-        Notification notification = new NotificationCompat.Builder(this)
-                .setContentTitle("MissedCallService")
-                .setTicker("Missed Call Service")
-                .setContentText("Missed Call Service")
-                .setOngoing(true)
-                .build();
+        //CharSequence name = getString("MyChannel");
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, "MissedCallChannel")
+                .setSmallIcon(R.drawable.stat_notify_missed_call)
+                .setContentTitle("Missed Call Service")
+                .setContentText("I will send message")
+                .setContentIntent(ppreviousIntent)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_MAX);
+
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+        notificationManager.notify(17299, mBuilder.build());
 
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         wl2 = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LocationManagerService");
@@ -269,15 +286,24 @@ public class HelloService extends IntentService {
             wl2.acquire();
         }
 
-        startForeground(1337,notification);
+        //startForeground(1337,notification);
+        startForeground(1337,mBuilder.build());
         while(true) {
             try {
-                Thread.sleep(200000000);
-            } catch (InterruptedException e) {
-                // Restore interrupt status.
-                Thread.currentThread().interrupt();
+                WriterLife = new BufferedWriter(new FileWriter("/sdcard/Android/data/MissedCall/Tick.txt",true));
+                date = new java.util.Date();
+                WriterLife.write(new Timestamp(date.getTime()) + "\n");
+                WriterLife.write("I was last seen awake\n");
+                WriterLife.close();
+            } catch(Exception e) {
+                Log.i(TAG,e.getLocalizedMessage());
             }
+            //Log.i(TAG,"I was last seen awake\n");
+            try {
+                Thread.sleep(2000);
+            } catch(Exception e) {}
         }
+
         //wl.release();
         //Log.i(TAG,"Exiting handler");
 //        return START_STICKY;
